@@ -1,6 +1,7 @@
 import requests
 import json, csv
 from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
 from transformers import pipeline
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -74,19 +75,21 @@ def main(article_url):
 def getSentimentFromArticleJSON():
     with open("articles.json", "r") as file:
         articles = json.load(file)
-
+        
+    old_date = "20240805"
+    avg_sentiment_score = 0
+    num_articles = 0
     date_sentiment = {}
-    for epoch in articles:
-        avg_sentiment_score = 0
-        num_articles = 0
-        date = epoch["feed"][0]["time_published"][:8]
-        for article in epoch["feed"]:
-            article_score = article["overall_sentiment_score"]
-            avg_sentiment_score = ((avg_sentiment_score*num_articles) + article_score)/ (num_articles + 1)
-            num_articles += 1
-
-        date_sentiment[date] = avg_sentiment_score
-        print(avg_sentiment_score)
+    for article in articles["feed"]:
+        date = article["time_published"][:8]
+        if datetime.strptime(date, "%Y%m%d") < datetime.strptime(old_date, "%Y%m%d") - timedelta(weeks = 1):
+             date_sentiment[old_date] = avg_sentiment_score
+             avg_sentiment_score = 0
+             num_articles = 0
+             old_date = date
+        article_score = article["overall_sentiment_score"]
+        avg_sentiment_score = ((avg_sentiment_score*num_articles) + article_score)/ (num_articles + 1)
+        num_articles += 1
     
     with open("sentiments.csv", "w") as file:
         writer = csv.writer(file)
