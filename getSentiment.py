@@ -80,7 +80,6 @@ def getSentimentFromArticleJSON():
         avg_sentiment_score = 0
         num_articles = 0
         date = epoch["feed"][0]["time_published"][:8]
-
         for article in epoch["feed"]:
             article_score = article["overall_sentiment_score"]
             avg_sentiment_score = ((avg_sentiment_score*num_articles) + article_score)/ (num_articles + 1)
@@ -94,7 +93,7 @@ def getSentimentFromArticleJSON():
         for date, sentiment in date_sentiment.items():
             writer.writerow([date, sentiment])
 
-            
+
 # Example usage
 article_url = "https://www.fool.com/investing/2024/07/27/the-best-growth-stock-that-nobody-is-talking-about/"
 # main(article_url)

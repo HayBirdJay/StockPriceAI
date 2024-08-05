@@ -37,6 +37,15 @@ def main():
         getDatafromURL(url)
         week_ago = week_ago - timedelta(weeks=1)
         current_week = current_week - timedelta(weeks =1)
+    
+    with open("articles.json", "r") as file: 
+        articles = file.read()
+
+    articles = articles.replace("}{", "},{")
+    articles = f"[{articles}]"
+
+    with open("articles.json", 'w') as file:
+        file.write(articles)
 
 # # replace the "demo" apikey below with your own key from https://www.alphavantage.co/support/#api-key
 # url = 'https://www.alphavantage.co/query?function=NEWS_SENTIMENT&tickers=TSLA&apikey=DO88KI5CUS76U1AN&limit=1000'
@@ -45,13 +54,6 @@ def main():
 #     with open("articles.json", "w") as f:
 #         json.dump(r.json(), f, ensure_ascii=False, indent=4)
     
-#     with open("articles.json", "r") as file: 
-#         articles = file.read()
 
-#     articles = articles.replace("}{", "},{")
-#     articles = f"[{articles}]"
-
-#     with open("articles.json", 'w') as file:
-#         file.write(articles)
-main()
-getFirstWeek()
+# main()
+# getFirstWeek()
