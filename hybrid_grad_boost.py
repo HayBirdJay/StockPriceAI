@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
+import matplotlib.pyplot as plt
 
 # Load stock price data
 def load_stock_data(stock_file):
@@ -44,11 +45,11 @@ def combine_data(stock_data, sentiment_data):
             article_sentiment_list = []
             for article in articles:
                 article_sentiment = [
-                    article['article_sentiment'],
-                    article['ticker_sentiment_score'],
-                    article['average_sentiment_for_publication'],
+                    float(article['article_sentiment']),
+                    float(article['ticker_sentiment']),
+                    float(article['average_publication_sentiment']),
                     article['amount_of_tickers_mentioned'],
-                    article['ticker_relevance']
+                    float(article['ticker_relevance'])
                 ]
                 article_sentiment_list.append(article_sentiment)
 
@@ -95,9 +96,34 @@ def main(stock_file, sentiment_file):
     predictions = model.predict(X_test)
     return predictions, y_test
 
-# Example usage
-stock_file = 'stock_prices.csv'
-sentiment_file = 'sentiment_data.json'
+
+# Plotting and saving results
+def save_results(predictions, actual_prices, output_csv='results.csv', output_png='predictions_vs_actual.png'):
+    # Save predictions and actual prices to a CSV file
+    results_df = pd.DataFrame({
+        'Predicted': predictions.flatten(),
+        'Actual': actual_prices.flatten()
+    })
+    results_df.to_csv(output_csv, index=False)
+
+    # Plotting the predictions vs actual prices
+    plt.figure(figsize=(10, 6))
+    plt.plot(actual_prices.flatten(), label='Actual Prices', color='blue')
+    plt.plot(predictions.flatten(), label='Predicted Prices', color='orange')
+    plt.title('Predicted vs Actual Stock Prices')
+    plt.xlabel('Sample Index')
+    plt.ylabel('Stock Price')
+    plt.legend()
+    plt.grid()
+    plt.savefig(output_png)
+    plt.close()
+
+stock_file = 'training_data/AAPL_prices_csv.csv'
+sentiment_file = 'training_data/AAPL_articles_formatted.json'
 predictions, actual_prices = main(stock_file, sentiment_file)
-print("Predictions:", predictions)
-print("Actual Prices:", actual_prices)
+
+# Save results and plot
+save_results(predictions, actual_prices)
+print("Predictions:", predictions.flatten())
+print("Actual Prices:", actual_prices.flatten())
+

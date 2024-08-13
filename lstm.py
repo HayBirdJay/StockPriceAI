@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
 
 # Load stock price data
 def load_stock_data(stock_file):
@@ -22,28 +22,36 @@ def load_sentiment_data(sentiment_file):
 def prepare_sequences(stock_data, sentiment_data, seq_length):
     sequences = []
     targets = []
+    dates = []
 
-    for date_str in stock_data['date'].dt.strftime('%Y-%m-%d'):
+    for idx in range(len(stock_data) - seq_length):
+        date_str = stock_data['date'].dt.strftime('%Y-%m-%d').iloc[idx + seq_length]
         articles = sentiment_data.get(date_str, [])
+        
         if articles:
             daily_sentiment = []
             for article in articles:
                 article_sentiment = [
-                    article['article_sentiment'],
-                    article['ticker_sentiment_score'],
-                    article['average_sentiment_for_publication'],
+                    float(article['article_sentiment']),
+                    float(article['ticker_sentiment']),
+                    float(article['average_publication_sentiment']),
                     article['amount_of_tickers_mentioned'],
-                    article['ticker_relevance']
+                    float(article['ticker_relevance'])
                 ]
                 daily_sentiment.append(article_sentiment)
-                
-            # Create a sequence if we have enough articles
+
             if len(daily_sentiment) >= seq_length:
-                for i in range(len(daily_sentiment) - seq_length):
-                    sequences.append(daily_sentiment[i:i + seq_length])
-                    targets.append(stock_data.loc[stock_data['date'] == date_str, 'close'].values[0])
-    
-    return np.array(sequences), np.array(targets)
+                sequences.append(daily_sentiment[:seq_length])
+                targets.append(stock_data['close'].iloc[idx + seq_length])
+                dates.append(date_str)
+
+    # Print counts for debugging
+    print("Total sequences:", len(sequences))
+    print("Total targets:", len(targets))
+    print("Total dates:", len(dates))
+
+    return np.array(sequences), np.array(targets), dates
+
 
 # Define the LSTM model
 class StockPriceLSTM(nn.Module):
@@ -59,15 +67,18 @@ class StockPriceLSTM(nn.Module):
         return out
 
 # Main function to run the process
-def main(stock_file, sentiment_file, seq_length=3):
+def main(stock_file, sentiment_file, seq_length=20):
     stock_data = load_stock_data(stock_file)
     sentiment_data = load_sentiment_data(sentiment_file)
 
     # Prepare data for LSTM
-    X, y = prepare_sequences(stock_data, sentiment_data, seq_length)
+    X, y, dates = prepare_sequences(stock_data, sentiment_data, seq_length)
 
-    # Split into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    # Split into training and testing sets based on temporal order
+    train_size = int(len(X) * 0.8)  # 80% for training
+    test_dates = dates[train_size:]
+    X_train, X_test = X[:train_size], X[train_size:]
+    y_train, y_test = y[:train_size], y[train_size:]
 
     # Convert to tensors
     X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
@@ -81,7 +92,7 @@ def main(stock_file, sentiment_file, seq_length=3):
     optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Training the model
-    num_epochs = 100
+    num_epochs = 10000
     for epoch in range(num_epochs):
         model.train()
         optimizer.zero_grad()
@@ -98,11 +109,40 @@ def main(stock_file, sentiment_file, seq_length=3):
     with torch.no_grad():
         predictions = model(X_test_tensor)
 
-    return predictions.numpy(), y_test
+    return predictions.numpy(), y_test, test_dates
 
+# Plotting and saving results
+def save_results(predictions, actual_prices, test_dates, output_csv='results.csv', output_png='predictions_vs_actual.png'):
+    # Save predictions and actual prices to a CSV file
+    print(test_dates)
+    print(predictions.flatten())
+    print(actual_prices.flatten())
+    results_df = pd.DataFrame({
+        'Date': test_dates,
+        'Predicted': predictions.flatten(),
+        'Actual': actual_prices.flatten()
+    })
+    results_df.to_csv(output_csv, index=False)
 
-stock_file = 'stock_prices.csv'
-sentiment_file = 'sentiment_data.json'
-predictions, actual_prices = main(stock_file, sentiment_file)
+    # Plotting the predictions vs actual prices
+    plt.figure(figsize=(10, 6))
+    plt.plot(test_dates, actual_prices.flatten(), label='Actual Prices', color='blue')
+    plt.plot(test_dates, predictions.flatten(), label='Predicted Prices', color='orange')
+    plt.title('Predicted vs Actual Stock Prices')
+    plt.xlabel('Date')
+    plt.ylabel('Stock Price')
+    plt.legend()
+    plt.grid()
+    plt.xticks(rotation=45)  # Rotate date labels for better visibility
+    plt.tight_layout()  # Adjust layout to prevent clipping of tick-labels
+    plt.savefig(output_png)
+    plt.close()
+
+stock_file = 'training_data/AAPL_prices_csv.csv'
+sentiment_file = 'training_data/AAPL_articles_formatted.json'
+predictions, actual_prices, test_dates = main(stock_file, sentiment_file)
+
+# Save results and plot
+save_results(predictions, actual_prices, test_dates)
 print("Predictions:", predictions.flatten())
 print("Actual Prices:", actual_prices.flatten())
