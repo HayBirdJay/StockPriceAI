@@ -28,3 +28,15 @@ LSTM
 how to get more days? using temperature
 
 dealing with weekends - it's fucky
+
+MORE EPOCHS!
+
+average mean distance of price from price curve
+
+TODO
+    save model to csv to tweak with
+    save values to csv
+    try getting some plotting system set up
+
+
+stuck at 486, considered stopping it , but was just stuck in a local optima
