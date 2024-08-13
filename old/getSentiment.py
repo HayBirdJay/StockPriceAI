@@ -10,94 +10,66 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.safari.service import Service as SafariService
 
-# Function to set up the WebDriver
-def setup_driver():
-    # For Chrome
-    # service = Service('path/to/chromedriver')
-    # driver = webdriver.Chrome(service=service)
-    
-    # For Safari
-    service = SafariService()
-    driver = webdriver.Safari(service=service)
-    
-    return driver
+def takeRollingAverage(data, curr_avg, num_articles):
+    return ((curr_avg*num_articles) + data)/ (num_articles + 1)
 
-# Function to scrape text from a financial article
-def scrape_article_text(url):
-    driver = setup_driver()
-    driver.get(url)
-    
-    # Wait until the main content is loaded (you may need to adjust this for different sites)
-    try:
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.TAG_NAME, "p"))
-        )
-    except Exception as e:
-        print(f"Error loading page content: {e}")
-        driver.quit()
-        return ""
-    
-    # Extract text from <p> tags
-    paragraphs = driver.find_elements(By.TAG_NAME, "p")
-    article_text = ' '.join([para.text for para in paragraphs])
-    
-    driver.quit()
-    return article_text
+def getTickerStats(ticker, article_data):
+    for ticker_data in article_data["ticker_sentiment"]:
+        if ticker_data["ticker"] == ticker:
+            return float(ticker_data["ticker_sentiment_score"]), float(ticker_data["relevance_score"])
+    raise ValueError(f"no ticker data found for {ticker}")
 
-# Function to perform sentiment analysis using a pre-trained BERT model
-def analyze_sentiment_bert(article_text):
-    sentiment_pipeline = pipeline("sentiment-analysis", model="nlptown/bert-base-multilingual-uncased-sentiment")
-    result = sentiment_pipeline(article_text[:512])  # BERT models have a token limit; adjust as needed
-    score = result[0]['score']
-    
-    # # Convert the sentiment label to a numeric score
-    # label_to_score = {
-    #     '1 star': -10,
-    #     '2 stars': -5,
-    #     '3 stars': 0,
-    #     '4 stars': 5,
-    #     '5 stars': 10
-    # }
-    # sentiment_label = result[0]['label']
-    # normalized_score = label_to_score.get(sentiment_label, 0)
-    
-    return score
+def getMostRelevantTopic(topic_list):
+    most_relevant = topic_list[0]["topic"]
+    max_score = 0
+    for topic in topic_list: 
+        if float(topic["relevance_score"]) > max_score:
+            most_relevant = topic["topic"]
+            max_score = float(topic["relevance_score"])
+    return most_relevant
 
-# Main function
-def main(article_url):
-    article_text = scrape_article_text(article_url)
-    if article_text:
-        sentiment_score = analyze_sentiment_bert(article_text)
-        print(f"Sentiment Score: {sentiment_score}")
-    else:
-        print("Could not extract article text.")
 
-def getSentimentFromArticleJSON():
+def getSentimentFromArticleJSON(ticker: str):
     with open("articles.json", "r") as file:
         articles = json.load(file)
-        
+
     old_date = "20240805"
     avg_sentiment_score = 0
+    avg_relevance_score = 0
     num_articles = 0
     date_sentiment = {}
-    for article in articles["feed"]:
-        date = article["time_published"][:8]
-        if datetime.strptime(date, "%Y%m%d") < datetime.strptime(old_date, "%Y%m%d") - timedelta(weeks = 1):
-             date_sentiment[old_date] = avg_sentiment_score
-             avg_sentiment_score = 0
-             num_articles = 0
-             old_date = date
-        article_score = article["overall_sentiment_score"]
-        avg_sentiment_score = ((avg_sentiment_score*num_articles) + article_score)/ (num_articles + 1)
-        num_articles += 1
+    relevant_topics = {}
+    for article_dict in articles: 
+        for article in article_dict["feed"]:
+            date = article["time_published"][:8]
+            if datetime.strptime(date, "%Y%m%d") < datetime.strptime(old_date, "%Y%m%d") - timedelta(weeks = 1):
+                most_relevant = max(relevant_topics, key=relevant_topics.get)
+                date_sentiment[old_date] = [avg_sentiment_score, avg_relevance_score, most_relevant]
+                avg_sentiment_score = 0
+                avg_relevance_score = 0
+                relevant_topics = {}
+                num_articles = 0
+                old_date = date
+
+            article_score, ticker_relevancy_score = getTickerStats(ticker, article)
+            relevant_topic = getMostRelevantTopic(article["topics"])
+
+            avg_sentiment_score = takeRollingAverage(article_score, avg_sentiment_score, num_articles)
+            avg_relevance_score = takeRollingAverage(ticker_relevancy_score, avg_relevance_score, num_articles)
+
+            if relevant_topics.get(relevant_topic, "") == "":
+                relevant_topics[relevant_topic] = 1
+            else:
+                relevant_topics[relevant_topic] += 1
+            num_articles += 1
     
     with open("sentiments.csv", "w") as file:
         writer = csv.writer(file)
         for date, sentiment in date_sentiment.items():
-            writer.writerow([date, sentiment])
+            writer.writerow([date, sentiment[0], sentiment[1], sentiment[2]])
 
 
 # Example usage
 article_url = "https://www.fool.com/investing/2024/07/27/the-best-growth-stock-that-nobody-is-talking-about/"
 # main(article_url)
-getSentimentFromArticleJSON()
+getSentimentFromArticleJSON("CMG")

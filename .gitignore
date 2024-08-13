@@ -1,2 +1,3 @@
 venv/
-training_data/
+test_scrape.py
+training_data

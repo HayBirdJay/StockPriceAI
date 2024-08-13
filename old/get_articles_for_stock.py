@@ -1,5 +1,6 @@
 # old api key : DO88KI5CUS76U1AN
 #new api key (to bypass daily limit): WD67GOQENJJEPXYE
+#news api key: 73d0513b2a044fc7812d45b914a6f6f7
 import json
 import requests
 import csv
@@ -27,7 +28,7 @@ def main():
     current_week = datetime.now()
     current_week = current_week.strftime("%Y%m%d") + "T0000"
     print(current_week)
-    first_week = getFirstWeek()
+    first_week = getFirstWeek() + "T0000"
     print(first_week)
     # while current_week > first_week:
     #     week_ago_formatted = week_ago.strftime("%Y%m%d") + "T0000"
