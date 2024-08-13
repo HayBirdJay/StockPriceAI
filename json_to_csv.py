@@ -7,7 +7,7 @@ with open(f'training_data/{ticker}_prices_formatted.json', 'r') as f:
     prices = json.loads(f.read())
     f.close()
 
-with open(f'training_data/{ticker}_prices_csv.json', 'w') as f:
+with open(f'training_data/{ticker}_prices_csv.csv', 'w') as f:
     csv_writer = csv.writer(f)
 
     for day in prices:
