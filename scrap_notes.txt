@@ -1,0 +1,30 @@
+alphavantage api only allows 25 calls per ip address per day
+
+first layer: 
+    list of articles from week
+        article sentiment score
+        ticker sentiment score
+        average sentiment for article's publication
+        amount of tickers mentioned in article
+        ticker relevance
+
+second layer:
+    average sentiment score for ticker
+
+
+
+
+features
+    sentiment score for article (weighed based on average sentiment for publication, amount of tickers mentioned)
+    sentiment score for ticker (weighed based on relevance)
+    amount of articles that week
+    
+max out the sentiment scores according to max sentiment score?
+
+
+
+LSTM
+
+how to get more days? using temperature
+
+dealing with weekends - it's fucky
