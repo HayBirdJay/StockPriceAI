@@ -32,7 +32,7 @@ def prepare_sequences(stock_data, sentiment_data, seq_length):
                     article['article_sentiment'],
                     article['ticker_sentiment_score'],
                     article['average_sentiment_for_publication'],
-                    article['tickers_mentioned_sum'],
+                    article['amount_of_tickers_mentioned'],
                     article['ticker_relevance']
                 ]
                 daily_sentiment.append(article_sentiment)

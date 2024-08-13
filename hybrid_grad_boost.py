@@ -47,7 +47,7 @@ def combine_data(stock_data, sentiment_data):
                     article['article_sentiment'],
                     article['ticker_sentiment_score'],
                     article['average_sentiment_for_publication'],
-                    article['tickers_mentioned_sum'],
+                    article['amount_of_tickers_mentioned'],
                     article['ticker_relevance']
                 ]
                 article_sentiment_list.append(article_sentiment)
