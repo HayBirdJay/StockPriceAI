@@ -10,6 +10,7 @@ with open(f'training_data/{ticker}_prices_formatted.json', 'r') as f:
 with open(f'training_data/{ticker}_prices_csv.csv', 'w') as f:
     csv_writer = csv.writer(f)
 
+    csv_writer.writerow(["date", "close"])
     for day in prices:
         csv_writer.writerow([day, prices[day]])
     
