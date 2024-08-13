@@ -40,3 +40,8 @@ TODO
 
 
 stuck at 486, considered stopping it , but was just stuck in a local optima
+
+"because it's fucking squared"
+
+lstm treats 5 features and prices as all inputs
+
