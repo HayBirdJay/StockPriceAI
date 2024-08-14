@@ -8,20 +8,21 @@ ticker = "AAPL"
 
 model = 'LSTM'
 
-csv_name = 'testresults'
+csv_name = 'AAPL_combo_061548_08_2024'
 
 # Read the CSV file
 df = pd.read_csv(f"results/csvs/{csv_name}.csv")
 
+
 # Convert the 'date' column to datetime format
-df['date'] = pd.to_datetime(df['date'])
-df = df.sort_values(by=['date'], ascending=True)
+df['Date'] = pd.to_datetime(df['Date'])
+df = df.sort_values(by=['Date'], ascending=True)
 
 
 # Plot the data
 plt.figure(figsize=(10, 6))
-plt.plot(df['date'], df['predicted'], label='Predicted Value')
-plt.plot(df['date'], df['actual'], label='Actual Value')
+plt.plot(df['Date'], df['Predicted'], label='Predicted Value')
+plt.plot(df['Date'], df['Actual'], label='Actual Value')
 
 # Adding titles and labels
 plt.title('Predicted vs Actual Values Over Time')
