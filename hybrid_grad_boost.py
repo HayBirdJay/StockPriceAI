@@ -92,7 +92,7 @@ def main(stock_file, sentiment_file, seq_length=20):
 
 
 # Plotting and saving results
-def save_results(predictions, actual_prices, test_dates, output_csv='testresults.csv', output_png='predictions_vs_actual.png'):
+def save_results(predictions, actual_prices, test_dates, output_csv=f'results/csvs/testresults.csv', output_png='predictions_vs_actual.png'):
     # Save predictions and actual prices to a CSV file
     results_df = pd.DataFrame({
         'date': test_dates,
@@ -100,20 +100,6 @@ def save_results(predictions, actual_prices, test_dates, output_csv='testresults
         'actual': actual_prices.flatten()
     })
     results_df.to_csv(output_csv, index=False)
-
-    # Plotting the predictions vs actual prices
-    plt.figure(figsize=(10, 6))
-    plt.plot(test_dates, actual_prices.flatten(), label='Actual Prices', color='blue')
-    plt.plot(test_dates, predictions.flatten(), label='Predicted Prices', color='orange')
-    plt.title('Predicted vs Actual Stock Prices')
-    plt.xlabel('Date')
-    plt.ylabel('Stock Price')
-    plt.legend()
-    plt.grid()
-    plt.xticks(rotation=45)  # Rotate date labels for better visibility
-    plt.tight_layout()  # Adjust layout to prevent clipping of tick-labels
-    plt.savefig(output_png)
-    plt.close()
 
 stock_file = 'training_data/AAPL_prices_csv.csv'
 sentiment_file = 'training_data/AAPL_articles_formatted.json'
