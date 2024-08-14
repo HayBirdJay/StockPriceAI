@@ -21,9 +21,10 @@ def load_sentiment_data(sentiment_file):
     return sentiment_data
 
 # Combine stock and sentiment data
-def combine_data(stock_data, sentiment_data):
+def combine_data(stock_data, sentiment_data, seq_length):
     combined_data = stock_data.copy()
     daily_sentiment = []
+    dates = []
 
     # Process each date
     for date_str in combined_data['date'].dt.strftime('%Y-%m-%d'):
@@ -40,18 +41,19 @@ def combine_data(stock_data, sentiment_data):
                     float(article['ticker_relevance'])
                 ]
                 article_sentiment_list.append(article_sentiment)
-        
+            
             # Average daily sentiment
             daily_sentiment.append(np.mean(article_sentiment_list, axis=0))
         else:
             daily_sentiment.append([0, 0, 0, 0, 0])  # No articles means zero sentiment
-
+        if len(daily_sentiment) >= seq_length:
+                dates.append(date_str)
     # Add daily sentiment to combined data
     daily_sentiment = np.array(daily_sentiment)
     for i in range(daily_sentiment.shape[1]):
         combined_data[f'daily_sentiment_{i}'] = daily_sentiment[:, i]
 
-    return combined_data
+    return combined_data, dates
 
 # Prepare the features and target
 def prepare_data(combined_data):
@@ -63,19 +65,19 @@ def prepare_data(combined_data):
     return features, targets[:-1]  # Remove the last row where y is NaN
 
 # Main function to run the process
-def main(stock_file, sentiment_file):
+def main(stock_file, sentiment_file, seq_length=20):
     stock_data = load_stock_data(stock_file)
     sentiment_data = load_sentiment_data(sentiment_file)
     
     # Combine data and get daily sentiment
-    combined_data = combine_data(stock_data, sentiment_data)
+    combined_data, dates = combine_data(stock_data, sentiment_data, seq_length)
 
     # Prepare data for training
     X, y = prepare_data(combined_data)
     
     # Split into training and testing sets
     train_size = int(len(X) * 0.8)  # 80% for training
-    # test_dates = dates[train_size:]
+    test_dates = dates[train_size:]
     X_train, X_test = X[:train_size], X[train_size:]
     y_train, y_test = y[:train_size], y[train_size:]
 
@@ -85,14 +87,14 @@ def main(stock_file, sentiment_file):
 
     # Predictions
     predictions = model.predict(X_test)
-    return predictions, y_test
+    return predictions, y_test, test_dates
 
 
 # Plotting and saving results
-def save_results(predictions, actual_prices, output_csv='testresults.csv', output_png='predictions_vs_actual.png'):
+def save_results(predictions, actual_prices, test_dates, output_csv='testresults.csv', output_png='predictions_vs_actual.png'):
     # Save predictions and actual prices to a CSV file
     results_df = pd.DataFrame({
-        'date': pd.date_range(start='1/26/2006', periods=len(predictions)),  # Adjust the start date accordingly
+        'date': test_dates,
         'predicted': predictions.flatten(),
         'actual': actual_prices.flatten()
     })
@@ -100,10 +102,10 @@ def save_results(predictions, actual_prices, output_csv='testresults.csv', outpu
 
 stock_file = 'training_data/AAPL_prices_csv.csv'
 sentiment_file = 'training_data/AAPL_articles_formatted.json'
-predictions, actual_prices = main(stock_file, sentiment_file)
+predictions, actual_prices, test_dates = main(stock_file, sentiment_file)
 
 # Save results and plot
-save_results(predictions, actual_prices)
+save_results(predictions, actual_prices, test_dates)
 print("Predictions:", predictions.flatten())
 print("Actual Prices:", actual_prices.flatten())
 
