@@ -144,6 +144,7 @@ def main_with_gradient_boosting(seq_length=seq_length):
 
     # Train Gradient Boosting Regressor on residuals
     gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=learning_rate, max_depth=3)
+
     # Flatten X_train for GBR or use aggregated features
     X_train_flat = X_train.reshape(X_train.shape[0], -1)
     gbr.fit(X_train_flat, train_residuals)
@@ -163,9 +164,9 @@ def main_with_gradient_boosting(seq_length=seq_length):
 def save_results(predictions, actual_prices, test_dates):
     # Save predictions and actual prices to a CSV file
     results_df = pd.DataFrame({
-        'Date': test_dates,
-        'Predicted': predictions.flatten(),
-        'Actual': actual_prices.flatten()
+        'date': test_dates,
+        'predicted': predictions.flatten(),
+        'actual': actual_prices.flatten()
     })
 
     key = f'{ticker}_{model_type}_{datetime.now().strftime("%I%M%S_%m_%Y")}'

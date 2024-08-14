@@ -7,6 +7,10 @@ import torch.optim as optim
 from sklearn.model_selection import train_test_split
 import xgboost as xgb
 import matplotlib.pyplot as plt
+from datetime import datetime
+
+ticker = 'AAPL'
+model_type = 'GBOOST'
 
 # Load stock price data
 def load_stock_data(stock_file):
@@ -92,14 +96,19 @@ def main(stock_file, sentiment_file, seq_length=20):
 
 
 # Plotting and saving results
-def save_results(predictions, actual_prices, test_dates, output_csv=f'results/csvs/testresults.csv', output_png='predictions_vs_actual.png'):
+def save_results(predictions, actual_prices, test_dates, output_csv=f'results/csvs/testresults.csv'):
     # Save predictions and actual prices to a CSV file
     results_df = pd.DataFrame({
         'date': test_dates,
         'predicted': predictions.flatten(),
         'actual': actual_prices.flatten()
     })
-    results_df.to_csv(output_csv, index=False)
+    key = f'{ticker}_{model_type}_{datetime.now().strftime("%I%M%S_%m_%Y")}'
+
+    print(key)
+
+    results_df.to_csv(f'results/csvs/{key}.csv', index=False)
+
 
 stock_file = 'training_data/AAPL_prices_csv.csv'
 sentiment_file = 'training_data/AAPL_articles_formatted.json'
