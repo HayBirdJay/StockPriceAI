@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import ast
 
-name = 'AAPL_combo_060120_08_2024'
+name = 'AAPL_GBOOST_065312_08_2024'
 # Read numbers from the file
 with open(f'results/loss/{name}.txt', 'r') as file:
     content = file.read().strip()
