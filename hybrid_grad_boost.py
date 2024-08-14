@@ -89,25 +89,14 @@ def main(stock_file, sentiment_file):
 
 
 # Plotting and saving results
-def save_results(predictions, actual_prices, output_csv='results.csv', output_png='predictions_vs_actual.png'):
+def save_results(predictions, actual_prices, output_csv='testresults.csv', output_png='predictions_vs_actual.png'):
     # Save predictions and actual prices to a CSV file
     results_df = pd.DataFrame({
-        'Predicted': predictions.flatten(),
-        'Actual': actual_prices.flatten()
+        'date': pd.date_range(start='1/26/2006', periods=len(predictions)),  # Adjust the start date accordingly
+        'predicted': predictions.flatten(),
+        'actual': actual_prices.flatten()
     })
     results_df.to_csv(output_csv, index=False)
-
-    # Plotting the predictions vs actual prices
-    plt.figure(figsize=(10, 6))
-    plt.plot(actual_prices.flatten(), label='Actual Prices', color='blue')
-    plt.plot(predictions.flatten(), label='Predicted Prices', color='orange')
-    plt.title('Predicted vs Actual Stock Prices')
-    plt.xlabel('Sample Index')
-    plt.ylabel('Stock Price')
-    plt.legend()
-    plt.grid()
-    plt.savefig(output_png)
-    plt.close()
 
 stock_file = 'training_data/AAPL_prices_csv.csv'
 sentiment_file = 'training_data/AAPL_articles_formatted.json'
