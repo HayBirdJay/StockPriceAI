@@ -52,6 +52,7 @@ def combine_data(stock_data, sentiment_data, seq_length):
     daily_sentiment = np.array(daily_sentiment)
     for i in range(daily_sentiment.shape[1]):
         combined_data[f'daily_sentiment_{i}'] = daily_sentiment[:, i]
+        dates.append(date_str)
 
     return combined_data, dates
 
@@ -100,9 +101,30 @@ def save_results(predictions, actual_prices, test_dates, output_csv='testresults
     })
     results_df.to_csv(output_csv, index=False)
 
+    # Plotting the predictions vs actual prices
+    plt.figure(figsize=(10, 6))
+    plt.plot(test_dates, actual_prices.flatten(), label='Actual Prices', color='blue')
+    plt.plot(test_dates, predictions.flatten(), label='Predicted Prices', color='orange')
+    plt.title('Predicted vs Actual Stock Prices')
+    plt.xlabel('Date')
+    plt.ylabel('Stock Price')
+    plt.legend()
+    plt.grid()
+    plt.xticks(rotation=45)  # Rotate date labels for better visibility
+    plt.tight_layout()  # Adjust layout to prevent clipping of tick-labels
+    plt.savefig(output_png)
+    plt.close()
+
 stock_file = 'training_data/AAPL_prices_csv.csv'
 sentiment_file = 'training_data/AAPL_articles_formatted.json'
 predictions, actual_prices, test_dates = main(stock_file, sentiment_file)
+
+min_length = min(len(test_dates), len(predictions), len(actual_prices))
+
+# Trim all arrays to the same length
+test_dates = test_dates[:min_length]
+predictions = predictions[:min_length]
+actual_prices = actual_prices[:min_length]
 
 # Save results and plot
 save_results(predictions, actual_prices, test_dates)
