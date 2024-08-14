@@ -8,7 +8,7 @@ ticker = "AAPL"
 
 model = 'LSTM'
 
-csv_name = 'AAPL_GBOOST_064019_08_2024'
+csv_name = 'AAPL_combo_070809_08_2024'
 
 # Read the CSV file
 df = pd.read_csv(f"results/csvs/{csv_name}.csv")

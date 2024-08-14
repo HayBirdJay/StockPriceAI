@@ -143,7 +143,7 @@ def main_with_gradient_boosting(seq_length=seq_length):
     train_residuals = y_train - lstm_train_predictions
 
     # Train Gradient Boosting Regressor on residuals
-    gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=learning_rate, max_depth=3)
+    gbr = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=3)
 
     # Flatten X_train for GBR or use aggregated features
     X_train_flat = X_train.reshape(X_train.shape[0], -1)

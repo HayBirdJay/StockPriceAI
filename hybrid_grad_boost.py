@@ -1,12 +1,7 @@
 import pandas as pd
 import json
 import numpy as np
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from sklearn.model_selection import train_test_split
 import xgboost as xgb
-import matplotlib.pyplot as plt
 from datetime import datetime
 
 ticker = 'AAPL'
@@ -24,18 +19,19 @@ def load_sentiment_data(sentiment_file):
         sentiment_data = json.load(file)
     return sentiment_data
 
-# Combine stock and sentiment data
-def combine_data(stock_data, sentiment_data, seq_length):
-    combined_data = stock_data.copy()
-    daily_sentiment = []
+# Updated split logic to ensure more balanced train/test sets
+def split_data_by_year(stock_data, sentiment_data, seq_length):
+    sequences = []
+    targets = []
     dates = []
 
-    # Process each date
-    for date_str in combined_data['date'].dt.strftime('%Y-%m-%d'):
+    # Prepare sequences and targets (unchanged)
+    for idx in range(len(stock_data) - seq_length):
+        date_str = stock_data['date'].dt.strftime('%Y-%m-%d').iloc[idx + seq_length]
         articles = sentiment_data.get(date_str, [])
+        
         if articles:
-            # Prepare input for the article sentiment model
-            article_sentiment_list = []
+            daily_sentiment = []
             for article in articles:
                 article_sentiment = [
                     float(article['article_sentiment']),
@@ -44,21 +40,36 @@ def combine_data(stock_data, sentiment_data, seq_length):
                     article['amount_of_tickers_mentioned'],
                     float(article['ticker_relevance'])
                 ]
-                article_sentiment_list.append(article_sentiment)
-            
-            # Average daily sentiment
-            daily_sentiment.append(np.mean(article_sentiment_list, axis=0))
-        else:
-            daily_sentiment.append([0, 0, 0, 0, 0])  # No articles means zero sentiment
-        if len(daily_sentiment) >= seq_length:
-                dates.append(date_str)
-    # Add daily sentiment to combined data
-    daily_sentiment = np.array(daily_sentiment)
-    for i in range(daily_sentiment.shape[1]):
-        combined_data[f'daily_sentiment_{i}'] = daily_sentiment[:, i]
-        dates.append(date_str)
+                daily_sentiment.append(article_sentiment)
 
-    return combined_data, dates
+            if len(daily_sentiment) >= seq_length:
+                sequences.append(daily_sentiment[:seq_length])
+                targets.append(stock_data['close'].iloc[idx + seq_length])
+                dates.append(date_str)
+
+    # Convert to NumPy arrays
+    sequences = np.array(sequences)
+    targets = np.array(targets)
+
+    # Convert dates back to datetime for easier filtering and convert to Series
+    dates = pd.to_datetime(dates)
+    dates = pd.Series(dates)  # Convert to Pandas Series for easier datetime access
+
+    # Split by years, ensuring all 2022 and 2023 data is for training, and 2024 data is for testing
+    train_mask = (dates.dt.year == 2022) | (dates.dt.year == 2023)
+    test_mask = dates.dt.year == 2024
+
+    # Split the data
+    X_train, X_test = sequences[train_mask], sequences[test_mask]
+    y_train, y_test = targets[train_mask], targets[test_mask]
+    train_dates, test_dates = dates[train_mask], dates[test_mask]
+
+    print("Training set:")
+    print(train_dates.min(), "to", train_dates.max())
+    print("Testing set:")
+    print(test_dates.min(), "to", test_dates.max())
+
+    return X_train, X_test, y_train, y_test, train_dates, test_dates
 
 # Prepare the features and target
 def prepare_data(combined_data):
@@ -74,26 +85,19 @@ def main(stock_file, sentiment_file, seq_length=20):
     stock_data = load_stock_data(stock_file)
     sentiment_data = load_sentiment_data(sentiment_file)
     
-    # Combine data and get daily sentiment
-    combined_data, dates = combine_data(stock_data, sentiment_data, seq_length)
+    # Split data by year for training and testing
+    X_train, X_test, y_train, y_test, train_dates, test_dates = split_data_by_year(stock_data, sentiment_data, seq_length)
 
-    # Prepare data for training
-    X, y = prepare_data(combined_data)
-    
-    # Split into training and testing sets
-    train_size = int(len(X) * 0.8)  # 80% for training
-    test_dates = dates[train_size:]
-    X_train, X_test = X[:train_size], X[train_size:]
-    y_train, y_test = y[:train_size], y[train_size:]
+    X_train = X_train.reshape(X_train.shape[0], -1)  # Flatten seq_length * num_features into a single dimension
+    X_test = X_test.reshape(X_test.shape[0], -1)
 
     # Create and fit the XGBoost model
-    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100, learning_rate=0.1)
+    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100, learning_rate=1)
     model.fit(X_train, y_train)
 
     # Predictions
     predictions = model.predict(X_test)
     return predictions, y_test, test_dates
-
 
 # Plotting and saving results
 def save_results(predictions, actual_prices, test_dates, output_csv=f'results/csvs/testresults.csv'):
@@ -123,7 +127,4 @@ actual_prices = actual_prices[:min_length]
 
 # Save results and plot
 save_results(predictions, actual_prices, test_dates)
-print("Predictions:", predictions.flatten())
-print("Actual Prices:", actual_prices.flatten())
-
 
