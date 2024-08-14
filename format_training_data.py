@@ -57,9 +57,10 @@ with open(f"training_data/{ticker}_articles_unformatted.json", "r") as f:
 
     while current_date <= end:
         str_curr_date = current_date.strftime("%Y-%m-%d")   
+        yesterday = current_date - timedelta(days=1)
         
         if str_curr_date not in new_articles:
-            new_articles[str_curr_date] = []
+            new_articles[str_curr_date] = new_articles[yesterday.strftime("%Y-%m-%d")]
         
         # move to next day
         current_date += timedelta(days=1)

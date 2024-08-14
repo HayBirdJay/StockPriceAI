@@ -27,6 +27,7 @@ print(f"getting historical {ticker} prices")
 with open(f"training_data/{ticker}_prices_unformatted.json", "w") as f:
     response = requests.get(price_url).json()
     f.write(json.dumps(response["Time Series (Daily)"], indent=2))
+    f.close()
         
 # get ARTICLES
 print(f"getting historical {ticker} articles")
@@ -78,10 +79,7 @@ with open(f"training_data/{ticker}_articles_unformatted.json", "w") as f:
         article["average_publication_sentiment"] = publications[article["average_publication_sentiment"]]
 
     f.write(json.dumps(all_articles, indent=2))
-    
-
-
-
+    f.close()
 
 
 
