@@ -45,3 +45,4 @@ stuck at 486, considered stopping it , but was just stuck in a local optima
 
 lstm treats 5 features and prices as all inputs
 
+got it to follow more closely, but model too dramatic
