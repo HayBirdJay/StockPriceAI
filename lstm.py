@@ -10,13 +10,42 @@ import matplotlib.pyplot as plt
 def load_stock_data(stock_file):
     stock_data = pd.read_csv(stock_file)  # Assuming CSV with 'date' and 'close' columns
     stock_data['date'] = pd.to_datetime(stock_data['date'])
+    stock_data = stock_data.sort_values(by='date')  
     return stock_data
 
 # Load sentiment data from JSON
 def load_sentiment_data(sentiment_file):
     with open(sentiment_file, 'r') as file:
         sentiment_data = json.load(file)
-    return sentiment_data
+    
+    # Convert sentiment data to a DataFrame for sorting
+    sentiment_list = []
+    for date_str, articles in sentiment_data.items():
+        for article in articles:
+            article_data = {
+                'date': pd.to_datetime(date_str),  # Convert to datetime
+                'article_sentiment': article['article_sentiment'],
+                'ticker_sentiment': article['ticker_sentiment'],
+                'average_publication_sentiment': article['average_publication_sentiment'],
+                'amount_of_tickers_mentioned': article['amount_of_tickers_mentioned'],
+                'ticker_relevance': article['ticker_relevance']
+            }
+            sentiment_list.append(article_data)
+    
+    # Create DataFrame and sort by date
+    sentiment_df = pd.DataFrame(sentiment_list)
+    sentiment_df = sentiment_df.sort_values(by='date')  # Sort from oldest to newest
+
+    # Convert back to dict
+    sorted_sentiment_data = {}
+    for _, row in sentiment_df.iterrows():
+        date_str = row['date'].strftime('%Y-%m-%d')
+        if date_str not in sorted_sentiment_data:
+            sorted_sentiment_data[date_str] = []
+        sorted_sentiment_data[date_str].append(row.to_dict())
+    
+    return sorted_sentiment_data
+
 
 # Prepare input sequences and targets for LSTM
 def prepare_sequences(stock_data, sentiment_data, seq_length):
@@ -89,10 +118,10 @@ def main(stock_file, sentiment_file, seq_length=20):
     # Create the LSTM model
     model = StockPriceLSTM(input_size=5, hidden_size=50, output_size=1)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.0001)
 
     # Training the model
-    num_epochs = 10000
+    num_epochs = 100000
     for epoch in range(num_epochs):
         model.train()
         optimizer.zero_grad()
@@ -103,40 +132,36 @@ def main(stock_file, sentiment_file, seq_length=20):
 
         if (epoch + 1) % 10 == 0:
             print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+    
 
     # Testing the model
     model.eval()
     with torch.no_grad():
         predictions = model(X_test_tensor)
+        train_predictions = model(X_train_tensor)
+
+    train_results_df = pd.DataFrame({
+        'date': dates[:train_size],
+        'predicted': train_predictions.flatten(),
+        'actual': y_train.flatten()
+    })
+    train_results_df.to_csv("train.csv", index=False)
 
     return predictions.numpy(), y_test, test_dates
 
 # Plotting and saving results
-def save_results(predictions, actual_prices, test_dates, output_csv='results.csv', output_png='predictions_vs_actual.png'):
+def save_results(predictions, actual_prices, test_dates, output_csv='results_lstm_100000_again.csv', output_png='predictions_vs_actual_15_slower.png'):
     # Save predictions and actual prices to a CSV file
     print(test_dates)
     print(predictions.flatten())
     print(actual_prices.flatten())
     results_df = pd.DataFrame({
-        'Date': test_dates,
-        'Predicted': predictions.flatten(),
-        'Actual': actual_prices.flatten()
+        'date': test_dates,
+        'predicted': predictions.flatten(),
+        'actual': actual_prices.flatten()
     })
     results_df.to_csv(output_csv, index=False)
 
-    # Plotting the predictions vs actual prices
-    plt.figure(figsize=(10, 6))
-    plt.plot(test_dates, actual_prices.flatten(), label='Actual Prices', color='blue')
-    plt.plot(test_dates, predictions.flatten(), label='Predicted Prices', color='orange')
-    plt.title('Predicted vs Actual Stock Prices')
-    plt.xlabel('Date')
-    plt.ylabel('Stock Price')
-    plt.legend()
-    plt.grid()
-    plt.xticks(rotation=45)  # Rotate date labels for better visibility
-    plt.tight_layout()  # Adjust layout to prevent clipping of tick-labels
-    plt.savefig(output_png)
-    plt.close()
 
 stock_file = 'training_data/AAPL_prices_csv.csv'
 sentiment_file = 'training_data/AAPL_articles_formatted.json'
