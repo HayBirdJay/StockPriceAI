@@ -2,3 +2,5 @@ venv/
 test_scrape.py
 training_data
 results
+.DS_Store
+.env

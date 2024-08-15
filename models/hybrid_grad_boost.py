@@ -3,29 +3,25 @@ import json
 import numpy as np
 import xgboost as xgb
 from datetime import datetime
+import subprocess
+import argparse
 
-ticker = 'AAPL'
-model_type = 'GBOOST'
-
-# Load stock price data
 def load_stock_data(stock_file):
-    stock_data = pd.read_csv(stock_file)  # Assuming CSV with 'date' and 'close' columns
+    stock_data = pd.read_csv(stock_file)  
     stock_data['date'] = pd.to_datetime(stock_data['date'])
     return stock_data
 
-# Load sentiment data from JSON
+
 def load_sentiment_data(sentiment_file):
     with open(sentiment_file, 'r') as file:
         sentiment_data = json.load(file)
     return sentiment_data
 
-# Updated split logic to ensure more balanced train/test sets
 def split_data_by_year(stock_data, sentiment_data, seq_length):
     sequences = []
     targets = []
     dates = []
 
-    # Prepare sequences and targets (unchanged)
     for idx in range(len(stock_data) - seq_length):
         date_str = stock_data['date'].dt.strftime('%Y-%m-%d').iloc[idx + seq_length]
         articles = sentiment_data.get(date_str, [])
@@ -47,19 +43,15 @@ def split_data_by_year(stock_data, sentiment_data, seq_length):
                 targets.append(stock_data['close'].iloc[idx + seq_length])
                 dates.append(date_str)
 
-    # Convert to NumPy arrays
     sequences = np.array(sequences)
     targets = np.array(targets)
 
-    # Convert dates back to datetime for easier filtering and convert to Series
     dates = pd.to_datetime(dates)
-    dates = pd.Series(dates)  # Convert to Pandas Series for easier datetime access
+    dates = pd.Series(dates)
 
-    # Split by years, ensuring all 2022 and 2023 data is for training, and 2024 data is for testing
     train_mask = (dates.dt.year == 2022) | (dates.dt.year == 2023)
     test_mask = dates.dt.year == 2024
 
-    # Split the data
     X_train, X_test = sequences[train_mask], sequences[test_mask]
     y_train, y_test = targets[train_mask], targets[test_mask]
     train_dates, test_dates = dates[train_mask], dates[test_mask]
@@ -71,60 +63,58 @@ def split_data_by_year(stock_data, sentiment_data, seq_length):
 
     return X_train, X_test, y_train, y_test, train_dates, test_dates
 
-# Prepare the features and target
 def prepare_data(combined_data):
-    combined_data['next_close'] = combined_data['close'].shift(-1)  # Predict next day's close
+    combined_data['next_close'] = combined_data['close'].shift(-1) 
     features = combined_data.copy()
     targets = combined_data['next_close'].dropna().values
     
     features = features.drop(columns=['date', 'next_close']).dropna().values
-    return features, targets[:-1]  # Remove the last row where y is NaN
+    return features, targets[:-1] 
 
-# Main function to run the process
 def main(stock_file, sentiment_file, seq_length=20):
     stock_data = load_stock_data(stock_file)
     sentiment_data = load_sentiment_data(sentiment_file)
     
-    # Split data by year for training and testing
     X_train, X_test, y_train, y_test, train_dates, test_dates = split_data_by_year(stock_data, sentiment_data, seq_length)
 
-    X_train = X_train.reshape(X_train.shape[0], -1)  # Flatten seq_length * num_features into a single dimension
+    X_train = X_train.reshape(X_train.shape[0], -1)
     X_test = X_test.reshape(X_test.shape[0], -1)
 
-    # Create and fit the XGBoost model
     model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=100, learning_rate=1)
     model.fit(X_train, y_train)
 
-    # Predictions
     predictions = model.predict(X_test)
     return predictions, y_test, test_dates
 
-# Plotting and saving results
-def save_results(predictions, actual_prices, test_dates, output_csv=f'results/csvs/testresults.csv'):
-    # Save predictions and actual prices to a CSV file
+def save_results(predictions, actual_prices, test_dates, output_csv):
     results_df = pd.DataFrame({
         'date': test_dates,
         'predicted': predictions.flatten(),
         'actual': actual_prices.flatten()
     })
-    key = f'{ticker}_{model_type}_{datetime.now().strftime("%I%M%S_%m_%Y")}'
-
-    print(key)
-
-    results_df.to_csv(f'results/csvs/{key}.csv', index=False)
+    results_df.to_csv(f"results/{output_csv}", index=False)
 
 
-stock_file = 'training_data/AAPL_prices_csv.csv'
-sentiment_file = 'training_data/AAPL_articles_formatted.json'
-predictions, actual_prices, test_dates = main(stock_file, sentiment_file)
+if __name__ == "__main__":
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument('-t', '--ticker', required=True)
+    argparser.add_argument('-o', '--outputcsv', help="csv file to save results to.", required=True)
+    argparser.add_argument('-g','--graphfile',help="if set, graphs the results and saves it to the specified file name.")
+    args = argparser.parse_args()
 
-min_length = min(len(test_dates), len(predictions), len(actual_prices))
+    stock_file = f'training_data/{args.ticker}_prices_csv.csv'
+    sentiment_file = f'training_data/{args.ticker}_articles_formatted.json'
+    predictions, actual_prices, test_dates = main(stock_file, sentiment_file)
 
-# Trim all arrays to the same length
-test_dates = test_dates[:min_length]
-predictions = predictions[:min_length]
-actual_prices = actual_prices[:min_length]
 
-# Save results and plot
-save_results(predictions, actual_prices, test_dates)
+    min_length = min(len(test_dates), len(predictions), len(actual_prices))
+    test_dates = test_dates[:min_length]
+    predictions = predictions[:min_length]
+    actual_prices = actual_prices[:min_length]
 
+    save_results(predictions, actual_prices, test_dates, args.outputcsv)
+    print("Predictions:", predictions.flatten())
+    print("Actual Prices:", actual_prices.flatten())
+
+    if args.graphfile:
+        subprocess.run(['python', 'generate_graph.py', '-t', args.ticker, '-c', args.outputcsv, '-m', 'gboost'])

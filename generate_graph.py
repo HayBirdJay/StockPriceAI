@@ -1,35 +1,30 @@
-import csv
-import json
 import pandas as pd
 import matplotlib.pyplot as plt
+import argparse
 from datetime import datetime
 
-ticker = "AAPL"
+"""
+Given CSV data, generate a plot of the predicted vs actual stock prices.
+"""
+if __name__ == "__main__":
+    argparser = argparse.ArgumentParser()
+    argparser.add_argument("-t", "--ticker", default="AAPL")
+    argparser.add_argument("-m", "--model", required=True, help="model used to generate data ex: LSTM")
+    argparser.add_argument("-c", "--csv", help="csv file to source data from")
+    args = argparser.parse_args()
 
-model = 'LSTM'
-
-csv_name = 'AAPL_combo_070809_08_2024'
-
-# Read the CSV file
-df = pd.read_csv(f"results/csvs/{csv_name}.csv")
+    df = pd.read_csv(f"results/csvs/{args.csv}.csv")
+    df['date'] = pd.to_datetime(df['date'])
+    df = df.sort_values(by=['date'], ascending=True)
 
 
-# Convert the 'date' column to datetime format
-df['date'] = pd.to_datetime(df['date'])
-df = df.sort_values(by=['date'], ascending=True)
-
-
-# Plot the data
-plt.figure(figsize=(10, 6))
-plt.plot(df['date'], df['predicted'], label='Predicted Value')
-plt.plot(df['date'], df['actual'], label='Actual Value')
-
-# Adding titles and labels
-plt.title('Predicted vs Actual Values Over Time')
-plt.xlabel('Date')
-plt.ylabel('Value')
-plt.legend()
-plt.grid(True)
-
-# Show the plot
-plt.savefig(f'results/graphs/{ticker}_{model}_{datetime.now().strftime("%I%M%S_%m_%Y")}')
+    plt.figure(figsize=(10, 6))
+    plt.plot(df['date'], df['predicted'], label='Predicted Value')
+    plt.plot(df['date'], df['actual'], label='Actual Value')
+    plt.title('Predicted vs Actual Values Over Time')
+    plt.xlabel('Date')
+    plt.ylabel('Value')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f'results/graphs/{args.ticker}_{args.model}_{datetime.now().strftime("%I%M%S_%m_%Y")}')
+    plt.close()
