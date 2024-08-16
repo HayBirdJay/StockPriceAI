@@ -22,7 +22,7 @@ if __name__ == "__main__":
     if args.model == "lstm":
         script="models/lstm.py"
     elif args.model == "gradboost":
-        script="models/hybrid_grad_boost.py"
+        script="models/grad_boost.py"
     elif args.model == "combined":
         script="models/wombo_combo_v2.py"
     else:
