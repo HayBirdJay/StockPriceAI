@@ -137,7 +137,7 @@ def formatArticleData(ticker):
             yesterday = current_date - timedelta(days=1)
             
             if str_curr_date not in new_articles:
-                new_articles[str_curr_date] = new_articles[yesterday.strftime("%Y-%m-%d")]
+                new_articles[str_curr_date] = 0.95*new_articles[yesterday.strftime("%Y-%m-%d")]
             current_date += timedelta(days=1)
         f.close()
 
